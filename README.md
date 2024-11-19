@@ -18,17 +18,19 @@ Genshin Boss Picker 是一个为《原神》玩家设计的小工具，帮助玩
 
 ## 使用方法  
 1. 确保你的系统已安装Python（推荐版本 3.7 及以上）。  
-2. 下载或克隆本项目代码：  
+2. 下载或克隆本项目代码：
+
    ```bash
    git clone https://github.com/huiqiang233/genshin-boss-picker.git
    cd genshin-boss-picker
    ```
-编辑代码中的 boss_by_region，根据需要自定义BOSS名称、区域和权重。
+3. 编辑代码中的 boss_by_region，根据需要自定义BOSS名称、区域和权重。
 运行程序：
+
    ```bash
    python genshin_boss_picker.py
    ```
-程序将输出今日需要挑战的随机 BOSS 列表。
+4. 程序将输出今日需要挑战的随机 BOSS 列表。
 
 ---
 
