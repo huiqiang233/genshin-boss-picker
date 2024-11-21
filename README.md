@@ -17,6 +17,7 @@ Genshin Boss Picker 是一个为《原神》玩家设计的小工具，帮助玩
 ---
 
 ## 使用方法  
+小白使用带图形界面的程序直接访问[链接](https://github.com/huiqiang233/genshin-boss-picker/releases)
 1. 确保你的系统已安装Python（推荐版本 3.7 及以上）。  
 2. 下载或克隆本项目代码：
 
