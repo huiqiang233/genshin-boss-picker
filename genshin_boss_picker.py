@@ -1,4 +1,5 @@
 import random
+from db_manager import init_db, add_draw, get_recent_draws
 
 # 定义区域，BOSS 名称以及对应的权重
 boss_by_region = {
@@ -62,25 +63,28 @@ total_resin = 200  # 每天体力
 boss_resin_cost = 40  # 每次消耗体力
 draw_count = total_resin // boss_resin_cost  # 计算需要抽取的次数
 
-# 提取权重
-weights = [boss[2] for boss in boss_list]
+# 随机抽取 BOSS
+def random_draw(boss_list, max_repeats=3):
+    recent_draws = get_recent_draws()
+    available_bosses = [
+        boss for boss in boss_list if recent_draws.get(boss[1], 0) < max_repeats
+    ]
+    if not available_bosses:  # 如果没有符合条件的 BOSS
+        print("一周内所有 BOSS 都已抽取超过三次，放宽限制继续抽取。")
+        available_bosses = boss_list  # 忽略限制，重新启用所有 BOSS
+    weights = [boss[2] for boss in available_bosses]
+    selected_boss = random.choices(available_bosses, weights=weights, k=1)[0]
+    add_draw(selected_boss[1])  # 记录抽取结果
+    return selected_boss
 
-# 按权重随机抽取 BOSS
-selected_bosses = random.choices(boss_list, weights=weights, k=draw_count)
+# 主程序
+if __name__ == "__main__":
+    init_db()
 
-# 确保抽取结果不重复
-unique_bosses = []
-for boss in selected_bosses:
-    if boss not in unique_bosses:
-        unique_bosses.append(boss)
-    if len(unique_bosses) == draw_count:
-        break
+    print("今日抽取结果：")
+    for _ in range(draw_count):
+        region, boss, _ = random_draw(boss_list)
+        print(f"{region} {boss}")
 
-# 输出结果
-print("今天需要打的 Boss：")
-for i, boss in enumerate(unique_bosses, 1):
-    region, name, _ = boss  # 解包 BOSS 信息
-    print(f"{i}. {region} {name}")
-
-# 防止窗口闪退
-input("\n按回车键退出程序...")
+    # 防止窗口闪退
+    input("\n按回车键退出程序...")
