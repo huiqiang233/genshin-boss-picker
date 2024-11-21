@@ -60,7 +60,7 @@ boss_by_region = {
     ]
 }
 
-    # 自动生成完整的 BOSS 列表
+# 自动生成完整的 BOSS 列表
 boss_list = []
 for region, bosses in boss_by_region.items():
     for boss, weight in bosses:
