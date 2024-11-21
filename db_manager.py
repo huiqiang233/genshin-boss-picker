@@ -1,6 +1,5 @@
 import sqlite3
 from datetime import datetime, timedelta
-from db_template import DB_BYTES
 import os
 import sys
 import logging
@@ -18,34 +17,40 @@ class PortableDatabaseManager:
     def get_database_path():
         """
         获取数据库文件路径
-        支持 PyInstaller 打包后的 exe 和普通 Python 运行
+        支持 PyInstaller 打包后的 exe 数据库文件存储在用户的 AppData 目录,和普通 Python 运行
         """
+        # 数据库文件名
+        db_filename = "genshin_boss_history.db"
 
-        # 确定数据库存储路径
         if getattr(sys, 'frozen', False):
-            # 如果是 PyInstaller 环境，使用 _MEIPASS 读取嵌入的数据库
-            base_path = sys._MEIPASS  # 临时路径
-            db_filename = "genshin_boss_history.db"
-            temp_db_path = os.path.join(base_path, db_filename)
+            # 如果是 PyInstaller 环境
+            appdata_path = os.getenv('APPDATA')  # 获取用户 AppData\Roaming 目录
+            if not appdata_path:
+                raise EnvironmentError("无法获取用户的 AppData 路径")
 
-            # 确保数据库文件存储在 exe 同级目录
-            final_db_path = os.path.join(os.path.dirname(sys.executable), db_filename)
+            # 确定数据库最终路径
+            final_db_path = os.path.join(appdata_path, "genshin_boss_picker", db_filename)
 
+            # 确保 AppData 子目录存在
+            os.makedirs(os.path.dirname(final_db_path), exist_ok=True)
+
+            # 如果数据库文件不存在，则从临时目录复制或创建
+            if not os.path.exists(final_db_path):
+                base_path = sys._MEIPASS  # PyInstaller 的临时路径
+                temp_db_path = os.path.join(base_path, db_filename)
+
+                if os.path.exists(temp_db_path):
+                    shutil.copy(temp_db_path, final_db_path)
+                else:
+                    open(final_db_path, "w").close()  # 创建空文件
         else:
-            # 普通 Python 环境，使用脚本所在目录
-            base_path = os.path.dirname(os.path.abspath(__file__))  # 获取当前脚本路径
-            db_filename = "genshin_boss_history.db"
-            temp_db_path = os.path.join(base_path, db_filename)
-
-            # 确保数据库文件存储在当前目录
+            # 普通 Python 环境：数据库存储在脚本同级目录
+            base_path = os.path.dirname(os.path.abspath(__file__))
             final_db_path = os.path.join(base_path, db_filename)
 
-            
-
-        # 如果数据库文件不存在，创建并写入嵌入的字节流
-        if not os.path.exists(final_db_path):
-             with open(final_db_path, "wb") as db_file:
-                 db_file.write(DB_BYTES)
+            # 如果数据库文件不存在，则创建空文件
+            if not os.path.exists(final_db_path):
+                open(final_db_path, "w").close()
 
         return final_db_path
         
