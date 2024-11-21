@@ -102,7 +102,7 @@ class BossSelector:
         selected_boss = random.choices(available_bosses, weights=weights, k=1)[0]
         
         # 记录抽取结果
-        DatabaseManager.add_draw(selected_boss[1])
+        DatabaseManager.add_draw(selected_boss[1], selected_boss[0])
         
         return selected_boss
 
@@ -122,16 +122,33 @@ def main():
         # 初始化数据库
         DatabaseManager.init_db()
 
-        # 创建BOSS选择器
-        selector = BossSelector()
+        # 查询当天记录
+        today_draws = DatabaseManager.get_today_draw()
 
-        # 选择BOSS
-        selected_bosses = selector.select_bosses()
+        today_date = DatabaseManager.get_first_draw_date()
+        if not today_date:
+            today_date = datetime.now().date()
 
-        # 打印结果
-        print("今日抽取结果：")
-        for region, boss, _ in selected_bosses:
-            print(f"{region} {boss}")
+
+        if today_draws:
+            print(f"{today_date}")
+            print("今日已抽取，结果如下：")
+            for boss, region in today_draws:
+                print(f"{region} {boss}")
+        else:
+            # 清理7天前的数据
+            DatabaseManager.cleanup_old_data(days_to_keep=7)
+
+            # 创建BOSS选择器
+            selector = BossSelector()
+
+            # 选择BOSS
+            selected_bosses = selector.select_bosses()
+
+            # 打印结果
+            print("今日抽取结果：")
+            for region, boss, _ in selected_bosses:
+                print(f"{region} {boss}")
 
     except Exception as e:
         logging.error(f"程序执行发生错误: {e}")

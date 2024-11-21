@@ -68,7 +68,8 @@ class PortableDatabaseManager:
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS boss_history (
                         boss_name TEXT,
-                        draw_date DATE
+                        draw_date DATE,
+                        region TEXT
                     )
                 """)
                 # 为提高查询效率，添加索引
@@ -83,7 +84,7 @@ class PortableDatabaseManager:
 
     # 添加抽取记录
     @staticmethod
-    def add_draw(boss_name):
+    def add_draw(boss_name, region):
         try:
             # 获取数据库路径
             db_path = PortableDatabaseManager.get_database_path()
@@ -91,11 +92,11 @@ class PortableDatabaseManager:
             with sqlite3.connect(db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO boss_history (boss_name, draw_date) VALUES (?, ?)", 
-                    (boss_name, datetime.now().date())
+                    "INSERT INTO boss_history (boss_name, draw_date, region) VALUES (?, ?, ?)", 
+                    (boss_name, datetime.now().date(), region)
                 )
                 conn.commit()
-                logging.info(f"成功记录BOSS: {boss_name}")
+                logging.info(f"成功记录BOSS: {region} {boss_name}")
         except sqlite3.Error as e:
             logging.error(f"记录BOSS失败: {e}")
 
@@ -121,3 +122,63 @@ class PortableDatabaseManager:
         except sqlite3.Error as e:
             logging.error(f"查询抽取记录失败: {e}")
             return {}
+
+    @staticmethod
+    def get_today_draw():
+        try:
+            db_path = PortableDatabaseManager.get_database_path()
+            today = datetime.now().date()
+            
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT boss_name, region FROM boss_history 
+                    WHERE draw_date = ?
+                """, (today,))
+                result = cursor.fetchall()
+                return result  # 返回 (boss_name, region) 列表
+        except sqlite3.Error as e:
+            logging.error(f"查询当天记录失败: {e}")
+            return []
+
+        
+    # 清理过期数据
+    @staticmethod
+    def cleanup_old_data(days_to_keep=7):
+        try:
+            db_path = PortableDatabaseManager.get_database_path()
+            cutoff_date = datetime.now().date() - timedelta(days=days_to_keep)
+            
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    DELETE FROM boss_history
+                    WHERE draw_date < ?
+                """, (cutoff_date,))
+                conn.commit()
+                logging.info(f"成功清理早于 {cutoff_date} 的数据")
+        except sqlite3.Error as e:
+            logging.error(f"清理数据失败: {e}")
+
+    # 获取当天第一个 BOSS 的写入日期
+    @staticmethod
+    def get_first_draw_date():
+        try:
+            db_path = PortableDatabaseManager.get_database_path()
+            
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.cursor()
+                # 查询当天最早的日期
+                cursor.execute("""
+                    SELECT draw_date 
+                    FROM boss_history
+                    WHERE draw_date = (SELECT MIN(draw_date) FROM boss_history)
+                    LIMIT 1
+                """)
+                result = cursor.fetchone()
+                return result[0] if result else None  # 返回日期或 None
+        except sqlite3.Error as e:
+            logging.error(f"查询第一条记录日期失败: {e}")
+            return None
+
+
