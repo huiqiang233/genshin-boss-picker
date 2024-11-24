@@ -78,25 +78,36 @@ class BossSelector:
         self.boss_list = boss_list  # 直接使用全局的 boss_list
 
     # 随机抽取 BOSS
-    def random_draw(self):
+    def random_draw(self, excluded_bosses=None):
         """
-        随机抽取BOSS，考虑最近一周的抽取历史
+        随机抽取BOSS，考虑最近一周的抽取历史和当天已抽取的BOSS
         
+        :param excluded_bosses: 需要排除的BOSS名称列表
         :return: 选中的BOSS信息（地区、BOSS名称、权重）
         """
         recent_draws = DatabaseManager.get_recent_draws()
+        excluded_bosses = excluded_bosses or set()
         
-        # 筛选符合重复次数限制的BOSS
+        # 筛选符合重复次数限制且未在当天抽取的BOSS
         available_bosses = [
             boss for boss in self.boss_list 
-            if recent_draws.get(boss[1], 0) < self.max_repeats
+            if (recent_draws.get(boss[1], 0) < self.max_repeats and 
+                boss[1] not in excluded_bosses)
         ]
         
-        # 如果没有符合条件的BOSS，重置可用BOSS列表
+        # 如果没有符合条件的BOSS，重置可用BOSS列表（但仍排除当天已抽取的）
         if not available_bosses:
-            logging.warning("一周内所有BOSS都已抽取超过限制次数，放宽限制继续抽取。")
-            available_bosses = self.boss_list
-
+            logging.warning("一周内可用BOSS不足，放宽周限制继续抽取。")
+            available_bosses = [
+                boss for boss in self.boss_list 
+                if boss[1] not in excluded_bosses
+            ]
+            
+        # 如果仍然没有可用BOSS，说明所有BOSS都被抽取过了
+        if not available_bosses:
+            logging.error("没有可用的BOSS可供抽取")
+            return None
+            
         # 根据权重随机选择
         weights = [boss[2] for boss in available_bosses]
         selected_boss = random.choices(available_bosses, weights=weights, k=1)[0]
@@ -106,14 +117,22 @@ class BossSelector:
         
         return selected_boss
 
-    # 根据可用树脂选择BOSS
     def select_bosses(self):
+        """
+        根据可用树脂选择不重复的BOSS
+        """
         draw_count = self.total_resin // self.boss_resin_cost
         
         bosses = []
+        excluded_bosses = set()  # 用于记录当天已抽取的BOSS
+        
         for _ in range(draw_count):
-            boss = self.random_draw()
+            boss = self.random_draw(excluded_bosses)
+            if boss is None:  # 如果没有可用BOSS了
+                break
+                
             bosses.append(boss)
+            excluded_bosses.add(boss[1])  # 将已抽取的BOSS添加到排除列表
         
         return bosses
 
